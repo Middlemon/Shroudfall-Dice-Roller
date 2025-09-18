@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="sv">
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -11,6 +11,7 @@
     margin: 0; padding: 1em;
     text-align: center;
   }
+
   #diceColorSelectors {
     display: flex;
     justify-content: center;
@@ -18,69 +19,80 @@
     margin-bottom: 1.5em;
     flex-wrap: wrap;
   }
+
   .dice-select-wrapper {
     display: flex;
     align-items: center;
     gap: 6px;
   }
+
   select {
     font-size: 1em;
+    font-weight: bold; /* fet text */
     padding: 0.3em 0.6em;
     border-radius: 4px;
     border: 1px solid #ccc;
-    min-width: 90px;
-    color: #000;
+    min-width: 120px;
+    color: #000; /* alltid svart text */
     appearance: none;
     background-color: white;
     cursor: pointer;
   }
+
   .color-indicator {
     width: 18px;
     height: 18px;
     border-radius: 50%;
     border: 1px solid #999;
   }
-  /* Colors for indicators */
+  /* indikatorernas färger (kan ändras om du vill matcha ljusare varianter) */
   .grey { background-color: #888; }
   .yellow { background-color: #f1c40f; }
   .red { background-color: #e74c3c; }
   .none { background-color: transparent; border: 1px dashed #bbb;}
+
   .dice-container {
     display: inline-flex;
     align-items: center;
-    margin: 4px;
+    margin: 6px;
     vertical-align: middle;
   }
+
   img.dice-img {
     width: 48px;
     height: 48px;
-    margin-right: 6px;
+    margin-right: 8px;
     vertical-align: middle;
   }
+
   .step-header {
     font-weight: bold;
     margin-bottom: 0.5em;
   }
+
   .buttons {
     margin: 1em 0;
     font-size: 1.1em;
   }
+
   button {
     font-size: 1em;
     padding: 0.4em 1em;
     margin: 0.2em;
     cursor: pointer;
   }
+
   input[type="checkbox"] {
-    margin-left: 6px;
+    margin-left: 8px;
     cursor: pointer;
   }
 
-  /* Mobilanpassning */
+  /* Mobilanpassning: stapla dropdowns i kolumn, centrerade */
   @media (max-width: 600px) {
     #diceColorSelectors {
       flex-direction: column;
       align-items: center;
+      gap: 14px;
     }
   }
 </style>
@@ -150,13 +162,8 @@
   const redDie    = [2, 2, 3, 3, 4, 4];
 
   let currentRolls = [];
-  let rerolledFlags = [];
   let nextDieId = 0;
-
-  let activePlayerRerolled = [];
-  let inactivePlayerRerolled = [];
-
-  let step = 1;
+  let step = 1; // 1 = choose colors, 2 = after initial roll (active + essence), 3 = after active reroll (inactive), 4 = final
 
   const btnRoll = document.getElementById('btnRoll');
   const btnEssence = document.getElementById('btnEssenceReroll');
@@ -182,9 +189,6 @@
 
   function initialRoll() {
     currentRolls = [];
-    rerolledFlags = [];
-    activePlayerRerolled = [];
-    inactivePlayerRerolled = [];
     nextDieId = 0;
 
     for(let i=0; i<5; i++){
@@ -193,7 +197,6 @@
       if(color === 'none') continue;
       const val = rollDie(color);
       currentRolls.push({color, value: val, id: nextDieId++});
-      rerolledFlags.push(false);
     }
 
     document.getElementById('diceColorSelectors').style.display = 'none';
@@ -202,6 +205,8 @@
     step = 2;
     btnEssence.style.display = 'inline-block';
     btnActiveReroll.style.display = 'inline-block';
+    btnInactiveReroll.style.display = 'none';
+    btnShowFinal.style.display = 'none';
     btnReset.style.display = 'inline-block';
 
     updateResults("Step 1: Initial Roll");
@@ -209,13 +214,14 @@
 
   function essenceReroll() {
     if(step !== 2) return;
+    // Essence rerolls all dice but does NOT lock them — players can still choose dice to reroll afterwards.
     for(let i=0; i<currentRolls.length; i++){
       currentRolls[i].value = rollDie(currentRolls[i].color);
-      rerolledFlags[i] = true;
-      activePlayerRerolled[i] = true;
     }
-    step = 2; // fortfarande step 2 så active player kan välja
+    // Keep step at 2 so active player still picks
     btnEssence.style.display = 'none';
+    btnActiveReroll.style.display = 'inline-block'; // active still can choose
+    btnReset.style.display = 'inline-block';
     updateResults("Step 2: Essence Reroll (all dice)");
   }
 
@@ -223,40 +229,49 @@
     if(step !== 2 && step !== 3) return;
 
     let anyRerolled = false;
-    currentRolls.forEach((die, i) => {
+    currentRolls.forEach((die) => {
       const checkbox = document.getElementById('active_reroll_chk_' + die.id);
-      if(checkbox && checkbox.checked && !rerolledFlags[i]){
-        currentRolls[i].value = rollDie(currentRolls[i].color);
-        rerolledFlags[i] = true;
-        activePlayerRerolled[i] = true;
+      if(checkbox && checkbox.checked){
+        die.value = rollDie(die.color);
         anyRerolled = true;
       }
     });
+
     step = 3;
     btnEssence.style.display = 'none';
-    updateResults("Step 3: Active Player Reroll");
     btnActiveReroll.style.display = 'none';
     btnInactiveReroll.style.display = 'inline-block';
+    btnReset.style.display = 'inline-block';
+
+    if(anyRerolled){
+      updateResults("Step 3: Active Player Reroll");
+    } else {
+      updateResults("Step 3: Active Player skipped reroll");
+    }
   }
 
   function inactivePlayerReroll(){
     if(step !== 3) return;
+
     let anyRerolled = false;
-    currentRolls.forEach((die, i) => {
+    currentRolls.forEach((die) => {
       const checkbox = document.getElementById('inactive_reroll_chk_' + die.id);
-      if(checkbox && checkbox.checked && !rerolledFlags[i]){
-        currentRolls[i].value = rollDie(currentRolls[i].color);
-        rerolledFlags[i] = true;
-        inactivePlayerRerolled[i] = true;
+      if(checkbox && checkbox.checked){
+        die.value = rollDie(die.color);
         anyRerolled = true;
       }
     });
-    if(anyRerolled){
-      updateResults("Step 4: Inactive Player Reroll");
-    }
+
     step = 4;
     btnInactiveReroll.style.display = 'none';
     btnShowFinal.style.display = 'inline-block';
+    btnReset.style.display = 'inline-block';
+
+    if(anyRerolled){
+      updateResults("Step 4: Inactive Player Reroll");
+    } else {
+      updateResults("Step 4: Inactive Player skipped reroll");
+    }
   }
 
   function showFinal() {
@@ -274,10 +289,8 @@
   }
 
   function resetAll() {
+    // Gå tillbaka till val av tärningsfärger
     currentRolls = [];
-    rerolledFlags = [];
-    activePlayerRerolled = [];
-    inactivePlayerRerolled = [];
     nextDieId = 0;
     step = 1;
 
@@ -294,6 +307,7 @@
   function updateResults(headerText) {
     const container = document.getElementById('results');
     container.innerHTML = '';
+
     if(headerText) {
       const h = document.createElement('h2');
       h.className = 'step-header';
@@ -301,7 +315,7 @@
       container.appendChild(h);
     }
 
-    currentRolls.forEach((die, i) => {
+    currentRolls.forEach((die) => {
       const dieDiv = document.createElement('div');
       dieDiv.className = 'dice-container';
 
@@ -317,25 +331,28 @@
       textSpan.textContent = `${die.color.charAt(0).toUpperCase() + die.color.slice(1)} Die: ${die.value}`;
       dieDiv.appendChild(textSpan);
 
-      // Add reroll checkbox depending on step and player
+      // Add reroll checkbox depending on step
       if(step === 2) {
+        // Active player's selection
         const chk = document.createElement('input');
         chk.type = 'checkbox';
         chk.id = `active_reroll_chk_${die.id}`;
         chk.title = "Select this die to reroll (Active Player)";
         dieDiv.appendChild(chk);
       } else if(step === 3) {
-        if(!rerolledFlags[i]) {
-          const chk = document.createElement('input');
-          chk.type = 'checkbox';
-          chk.id = `inactive_reroll_chk_${die.id}`;
-          chk.title = "Select this die to reroll (Inactive Player)";
-          dieDiv.appendChild(chk);
-        }
+        // Inactive player's selection — allow choosing ANY die
+        const chk = document.createElement('input');
+        chk.type = 'checkbox';
+        chk.id = `inactive_reroll_chk_${die.id}`;
+        chk.title = "Select this die to reroll (Inactive Player)";
+        dieDiv.appendChild(chk);
       }
 
       container.appendChild(dieDiv);
     });
+
+    // Visa eller göm reset-knappen beroende på steg
+    btnReset.style.display = (step >= 2 ? 'inline-block' : 'none');
   }
 
   function updateColorIndicator(index) {
@@ -345,18 +362,18 @@
 
     indicator.className = 'color-indicator ' + color;
 
-    // Alltid svart text
+    // Ljusare bakgrunder + fet svart text (samma som tidigare)
     switch(color){
       case 'grey':
-        select.style.backgroundColor = '#888';
+        select.style.backgroundColor = '#bbb'; // ljusgrå
         select.style.color = '#000';
         break;
       case 'yellow':
-        select.style.backgroundColor = '#f1c40f';
+        select.style.backgroundColor = '#f9e065'; // ljusgul
         select.style.color = '#000';
         break;
       case 'red':
-        select.style.backgroundColor = '#e74c3c';
+        select.style.backgroundColor = '#f28a82'; // ljusröd
         select.style.color = '#000';
         break;
       case 'none':
