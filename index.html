@@ -16,6 +16,7 @@
     justify-content: center;
     gap: 12px;
     margin-bottom: 1.5em;
+    flex-wrap: wrap;
   }
   .dice-select-wrapper {
     display: flex;
@@ -73,6 +74,14 @@
   input[type="checkbox"] {
     margin-left: 6px;
     cursor: pointer;
+  }
+
+  /* Mobilanpassning */
+  @media (max-width: 600px) {
+    #diceColorSelectors {
+      flex-direction: column;
+      align-items: center;
+    }
   }
 </style>
 </head>
@@ -141,7 +150,12 @@
   const redDie    = [2, 2, 3, 3, 4, 4];
 
   let currentRolls = [];
+  let rerolledFlags = [];
   let nextDieId = 0;
+
+  let activePlayerRerolled = [];
+  let inactivePlayerRerolled = [];
+
   let step = 1;
 
   const btnRoll = document.getElementById('btnRoll');
@@ -168,6 +182,9 @@
 
   function initialRoll() {
     currentRolls = [];
+    rerolledFlags = [];
+    activePlayerRerolled = [];
+    inactivePlayerRerolled = [];
     nextDieId = 0;
 
     for(let i=0; i<5; i++){
@@ -176,6 +193,7 @@
       if(color === 'none') continue;
       const val = rollDie(color);
       currentRolls.push({color, value: val, id: nextDieId++});
+      rerolledFlags.push(false);
     }
 
     document.getElementById('diceColorSelectors').style.display = 'none';
@@ -192,10 +210,11 @@
     if(step !== 2) return;
     for(let i=0; i<currentRolls.length; i++){
       currentRolls[i].value = rollDie(currentRolls[i].color);
+      rerolledFlags[i] = true;
+      activePlayerRerolled[i] = true;
     }
-    step = 3;
+    step = 2; // Fortfarande step 2 så Active player kan välja
     btnEssence.style.display = 'none';
-    btnActiveReroll.style.display = 'inline-block';
     updateResults("Step 2: Essence Reroll (all dice)");
   }
 
@@ -203,20 +222,18 @@
     if(step !== 2 && step !== 3) return;
 
     let anyRerolled = false;
-    currentRolls.forEach((die) => {
+    currentRolls.forEach((die, i) => {
       const checkbox = document.getElementById('active_reroll_chk_' + die.id);
-      if(checkbox && checkbox.checked){
-        die.value = rollDie(die.color);
+      if(checkbox && checkbox.checked && !rerolledFlags[i]){
+        currentRolls[i].value = rollDie(currentRolls[i].color);
+        rerolledFlags[i] = true;
+        activePlayerRerolled[i] = true;
         anyRerolled = true;
       }
     });
     step = 3;
     btnEssence.style.display = 'none';
-    if(anyRerolled){
-      updateResults("Step 3: Active Player Reroll");
-    } else {
-      updateResults("Step 3: No Active Player Reroll");
-    }
+    updateResults("Step 3: Active Player Reroll");
     btnActiveReroll.style.display = 'none';
     btnInactiveReroll.style.display = 'inline-block';
   }
@@ -224,17 +241,17 @@
   function inactivePlayerReroll(){
     if(step !== 3) return;
     let anyRerolled = false;
-    currentRolls.forEach((die) => {
+    currentRolls.forEach((die, i) => {
       const checkbox = document.getElementById('inactive_reroll_chk_' + die.id);
-      if(checkbox && checkbox.checked){
-        die.value = rollDie(die.color);
+      if(checkbox && checkbox.checked && !rerolledFlags[i]){
+        currentRolls[i].value = rollDie(currentRolls[i].color);
+        rerolledFlags[i] = true;
+        inactivePlayerRerolled[i] = true;
         anyRerolled = true;
       }
     });
     if(anyRerolled){
       updateResults("Step 4: Inactive Player Reroll");
-    } else {
-      updateResults("Step 4: No Inactive Player Reroll");
     }
     step = 4;
     btnInactiveReroll.style.display = 'none';
@@ -250,6 +267,9 @@
 
   function resetAll() {
     currentRolls = [];
+    rerolledFlags = [];
+    activePlayerRerolled = [];
+    inactivePlayerRerolled = [];
     nextDieId = 0;
     step = 1;
 
@@ -273,7 +293,7 @@
       container.appendChild(h);
     }
 
-    currentRolls.forEach((die) => {
+    currentRolls.forEach((die, i) => {
       const dieDiv = document.createElement('div');
       dieDiv.className = 'dice-container';
 
@@ -289,21 +309,19 @@
       textSpan.textContent = `${die.color.charAt(0).toUpperCase() + die.color.slice(1)} Die: ${die.value}`;
       dieDiv.appendChild(textSpan);
 
-      // Add reroll checkbox depending on step
-      if(step === 2 || step === 3) {
-        if(btnInactiveReroll.style.display === 'inline-block') {
-          // Inactive player's reroll
+      // Add reroll checkbox depending on step and player
+      if(step === 2) {
+        const chk = document.createElement('input');
+        chk.type = 'checkbox';
+        chk.id = `active_reroll_chk_${die.id}`;
+        chk.title = "Select this die to reroll (Active Player)";
+        dieDiv.appendChild(chk);
+      } else if(step === 3) {
+        if(!rerolledFlags[i]) {
           const chk = document.createElement('input');
           chk.type = 'checkbox';
           chk.id = `inactive_reroll_chk_${die.id}`;
           chk.title = "Select this die to reroll (Inactive Player)";
-          dieDiv.appendChild(chk);
-        } else {
-          // Active player's reroll
-          const chk = document.createElement('input');
-          chk.type = 'checkbox';
-          chk.id = `active_reroll_chk_${die.id}`;
-          chk.title = "Select this die to reroll (Active Player)";
           dieDiv.appendChild(chk);
         }
       }
@@ -317,10 +335,8 @@
     const color = select.value;
     const indicator = document.getElementById(`color-indicator-${index}`);
 
-    // Set class for indicator
     indicator.className = 'color-indicator ' + color;
 
-    // Set background color and text color of select to match the color
     switch(color){
       case 'grey':
         select.style.backgroundColor = '#888';
