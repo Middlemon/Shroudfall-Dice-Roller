@@ -1,251 +1,293 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Shroudfall Dice Roller with One-Time Reroll</title>
-  <style>
-    :root {
-      --gray: #555;
-      --yellow: goldenrod;
-      --red: crimson;
-    }
-
-    body {
-      font-family: Arial, sans-serif;
-      background: #f4f4f4;
-      margin: 0;
-      padding: 1em;
-      text-align: center;
-    }
-
-    h1 {
-      font-size: 1.8em;
-      margin-bottom: 1em;
-    }
-
-    .dice-row {
-      margin: 1em 0;
-      font-size: 1.1em;
-    }
-
-    input[type="number"] {
-      width: 60px;
-      font-size: 1em;
-      padding: 0.2em;
-      margin-left: 0.5em;
-      text-align: center;
-    }
-
-    button {
-      font-size: 1.2em;
-      padding: 0.5em 1.5em;
-      margin-top: 1em;
-      background-color: #0077cc;
-      color: white;
-      border: none;
-      border-radius: 5px;
-      cursor: pointer;
-    }
-
-    button:hover {
-      background-color: #005fa3;
-    }
-
-    .results {
-      margin-top: 2em;
-      font-size: 1.1em;
-      text-align: left;
-      display: inline-block;
-      background: #fff;
-      padding: 1em;
-      border-radius: 8px;
-      box-shadow: 0 0 5px rgba(0, 0, 0, 0.1);
-      max-width: 100%;
-      width: 100%;
-      box-sizing: border-box;
-    }
-
-    .gray {
-      color: var(--gray);
-    }
-
-    .yellow {
-      color: var(--yellow);
-    }
-
-    .red {
-      color: var(--red);
-    }
-
-    .dice-container {
-      display: inline-flex;
-      align-items: center;
-      margin: 4px;
-      vertical-align: middle;
-    }
-
-    img.dice-img {
-      width: 48px;
-      height: 48px;
-      margin-right: 6px;
-      vertical-align: middle;
-    }
-
-    button.reroll-btn {
-      font-size: 0.9em;
-      padding: 4px 8px;
-      background-color: #28a745;
-      border: none;
-      border-radius: 4px;
-      color: white;
-      cursor: pointer;
-    }
-
-    button.reroll-btn:hover {
-      background-color: #1e7e34;
-    }
-
-    @media (min-width: 500px) {
-      .results {
-        width: 400px;
-      }
-    }
-  </style>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Shroudfall Dice Roller – Full Flow with Inactive Player</title>
+<style>
+  body {
+    font-family: Arial, sans-serif;
+    background: #f4f4f4;
+    margin: 0; padding: 1em;
+    text-align: center;
+  }
+  .dice-row, .controls, .buttons {
+    margin: 1em 0;
+    font-size: 1.1em;
+  }
+  select, button {
+    font-size: 1em;
+    padding: 0.4em 1em;
+    margin: 0.2em;
+  }
+  .results {
+    margin-top: 2em;
+    font-size: 1.1em;
+    text-align: left;
+    display: inline-block;
+    background: #fff;
+    padding: 1em;
+    border-radius: 8px;
+    box-shadow: 0 0 5px rgba(0,0,0,0.1);
+    max-width: 100%;
+    width: 100%;
+    box-sizing: border-box;
+  }
+  .dice-container {
+    display: inline-flex;
+    align-items: center;
+    margin: 4px;
+    vertical-align: middle;
+  }
+  img.dice-img {
+    width: 48px;
+    height: 48px;
+    margin-right: 6px;
+    vertical-align: middle;
+  }
+  label {
+    user-select: none;
+  }
+  .step-header {
+    font-weight: bold;
+    margin-bottom: 0.5em;
+  }
+</style>
 </head>
 <body>
 
-  <h1>🎲 Shroudfall Dice Roller</h1>
+<h1>Shroudfall Dice Roller – Full Flow with Inactive Player</h1>
 
-  <div class="dice-row">
-    Gray dice:
-    <input type="number" id="gray" min="0" max="5" value="1" />
-  </div>
+<div class="controls">
+  <label for="numDice">Number of dice (4 or 5): </label>
+  <select id="numDice" disabled>
+    <option value="4">4</option>
+    <option value="5">5 (with infusion)</option>
+  </select>
+</div>
 
-  <div class="dice-row">
-    Yellow dice:
-    <input type="number" id="yellow" min="0" max="5" value="1" />
-  </div>
+<div class="buttons">
+  <button id="btnRoll" onclick="initialRoll()">Roll All Dice</button>
+  <button id="btnEssenceReroll" onclick="essenceReroll()" style="display:none;">Essence Reroll (all dice)</button>
+  <button id="btnActiveReroll" onclick="activePlayerReroll()" style="display:none;">Active Player: Reroll Selected</button>
+  <button id="btnInactiveReroll" onclick="inactivePlayerReroll()" style="display:none;">Inactive Player: Reroll Selected</button>
+  <button id="btnShowFinal" onclick="showFinal()" style="display:none;">Show Final Result</button>
+  <button id="btnReset" onclick="resetAll()" style="display:none;">Reset</button>
+</div>
 
-  <div class="dice-row">
-    Red dice:
-    <input type="number" id="red" min="0" max="5" value="1" />
-  </div>
+<div class="results" id="results"></div>
 
-  <button onclick="rollDice()">Roll Dice</button>
+<script>
+  const yellowDie = [0, 1, 2, 2, 3, 3];
+  const redDie    = [2, 2, 3, 3, 4, 4];
 
-  <div class="results" id="results"></div>
+  let currentRolls = [];      // {color, value, id}
+  let rerolledFlags = [];     // mark dice already rerolled by active or inactive player
+  let nextDieId = 0;
 
-  <script>
-    const diceDefinitions = {
-      gray: [0, 0, 1, 1, 2, 2],
-      yellow: [0, 1, 2, 2, 3, 3],
-      red: [2, 2, 3, 3, 4, 4],
-    };
+  // Keep track of rerolls by who
+  let activePlayerRerolled = [];
+  let inactivePlayerRerolled = [];
 
-    // Current rolls and reroll state
-    let currentRolls = {
-      gray: [],
-      yellow: [],
-      red: [],
-    };
+  // State step: 1=initial roll, 2=essence reroll, 3=active reroll, 4=inactive reroll, 5=final
+  let step = 1;
 
-    // Track which dice have already been rerolled (true/false arrays)
-    let rerolled = {
-      gray: [],
-      yellow: [],
-      red: [],
-    };
+  const numDiceSelect = document.getElementById('numDice');
+  const btnRoll = document.getElementById('btnRoll');
+  const btnEssence = document.getElementById('btnEssenceReroll');
+  const btnActiveReroll = document.getElementById('btnActiveReroll');
+  const btnInactiveReroll = document.getElementById('btnInactiveReroll');
+  const btnShowFinal = document.getElementById('btnShowFinal');
+  const btnReset = document.getElementById('btnReset');
 
-    function roll(dieArray) {
-      return dieArray[Math.floor(Math.random() * dieArray.length)];
+  function rollDie(color) {
+    const dieArray = (color === 'yellow') ? yellowDie : redDie;
+    return dieArray[Math.floor(Math.random() * dieArray.length)];
+  }
+
+  function initialRoll() {
+    const num = parseInt(numDiceSelect.value);
+    currentRolls = [];
+    rerolledFlags = [];
+    activePlayerRerolled = [];
+    inactivePlayerRerolled = [];
+    nextDieId = 0;
+
+    numDiceSelect.disabled = true;
+    btnRoll.style.display = 'none';
+
+    for(let i=0; i<num; i++){
+      const color = (i%2===0) ? 'yellow' : 'red';
+      const val = rollDie(color);
+      currentRolls.push({color, value: val, id: nextDieId++});
+      rerolledFlags.push(false);
     }
+    step = 2;
+    btnEssence.style.display = 'inline-block';
+    btnActiveReroll.style.display = 'inline-block';
+    updateResults("Step 1: Initial Roll");
+  }
 
-    function capitalize(str) {
-      return str.charAt(0).toUpperCase() + str.slice(1);
+  function essenceReroll() {
+    if(step !== 2) return;
+    for(let i=0; i<currentRolls.length; i++){
+      currentRolls[i].value = rollDie(currentRolls[i].color);
+      rerolledFlags[i] = true;
+      activePlayerRerolled[i] = true;
     }
+    step = 3;
+    btnEssence.style.display = 'none';
+    updateResults("Step 2: Essence Reroll (all dice)");
+  }
 
-    function formatRollsWithReroll(color) {
-      const rolls = currentRolls[color];
-      const rerolledFlags = rerolled[color];
+  function activePlayerReroll(){
+    if(step !== 2 && step !== 3) return;
 
-      if (rolls.length === 0) {
-        return `<div class="${color}"><strong>${capitalize(color)}:</strong> No dice rolled.</div>`;
+    let anyRerolled = false;
+    currentRolls.forEach((die, i) => {
+      const checkbox = document.getElementById('active_reroll_chk_' + die.id);
+      if(checkbox && checkbox.checked && !rerolledFlags[i]){
+        currentRolls[i].value = rollDie(currentRolls[i].color);
+        rerolledFlags[i] = true;
+        activePlayerRerolled[i] = true;
+        anyRerolled = true;
       }
+    });
+    if(anyRerolled){
+      step = 3;
+      btnEssence.style.display = 'none';
+      updateResults("Step 3: Active Player Reroll");
+      // after active rerolls, let inactive player reroll
+      btnActiveReroll.style.display = 'none';
+      btnInactiveReroll.style.display = 'inline-block';
+    } else {
+      alert("Select at least one die to reroll or skip.");
+    }
+  }
 
-      let output = `<div class="${color}"><strong>${capitalize(color)}:</strong><br>`;
+  function inactivePlayerReroll(){
+    if(step !== 3) return;
+    let anyRerolled = false;
+    currentRolls.forEach((die, i) => {
+      const checkbox = document.getElementById('inactive_reroll_chk_' + die.id);
+      if(checkbox && checkbox.checked && !rerolledFlags[i]){
+        currentRolls[i].value = rollDie(currentRolls[i].color);
+        rerolledFlags[i] = true;
+        inactivePlayerRerolled[i] = true;
+        anyRerolled = true;
+      }
+    });
+    step = 4;
+    btnInactiveReroll.style.display = 'none';
+    btnShowFinal.style.display = 'inline-block';
+    if(anyRerolled){
+      updateResults("Step 4: Inactive Player Reroll");
+    } else {
+      updateResults("Step 4: Inactive Player chose no rerolls");
+    }
+  }
 
-      rolls.forEach((val, index) => {
-        const imageName = `${color}_${val}.png`;
-        output += `<span class="dice-container" id="${color}-die-${index}">` +
-          `<img src="images/${imageName}" alt="${val}" title="Die ${index + 1}: ${val}" class="dice-img" />`;
+  function showFinal(){
+    if(step !== 4) return;
+    step = 5;
+    btnShowFinal.style.display = 'none';
+    btnReset.style.display = 'inline-block';
+    updateResults("Step 5: Final Result");
+  }
 
-        // Visa reroll-knappen bara om tärningen inte redan är rerollad
-        if (!rerolledFlags[index]) {
-          output += `<button class="reroll-btn" onclick="rerollDie('${color}', ${index})" title="Reroll die ${index + 1}">Reroll</button>`;
+  function resetAll(){
+    step = 1;
+    currentRolls = [];
+    rerolledFlags = [];
+    activePlayerRerolled = [];
+    inactivePlayerRerolled = [];
+    nextDieId = 0;
+
+    numDiceSelect.disabled = false;
+    btnRoll.style.display = 'inline-block';
+    btnEssence.style.display = 'none';
+    btnActiveReroll.style.display = 'none';
+    btnInactiveReroll.style.display = 'none';
+    btnShowFinal.style.display = 'none';
+    btnReset.style.display = 'none';
+
+    document.getElementById('results').innerHTML = '';
+  }
+
+  function updateResults(headerText){
+    const container = document.getElementById('results');
+    container.innerHTML = '';
+    const h = document.createElement('div');
+    h.className = 'step-header';
+    h.textContent = headerText;
+    container.appendChild(h);
+
+    currentRolls.forEach((die,i) => {
+      const span = document.createElement('span');
+      span.className = 'dice-container';
+
+      const img = document.createElement('img');
+      img.src = `images/${die.color}_${die.value}.png`;
+      img.alt = die.value;
+      img.className = 'dice-img';
+      span.appendChild(img);
+
+      if(step === 2 || step === 3){
+        if(!rerolledFlags[i]){
+          const chk = document.createElement('input');
+          chk.type = 'checkbox';
+          chk.id = `active_reroll_chk_${die.id}`;
+          span.appendChild(chk);
+          const lbl = document.createElement('label');
+          lbl.htmlFor = chk.id;
+          lbl.textContent = ' Active reroll';
+          span.appendChild(lbl);
+        } else {
+          const p = document.createElement('span');
+          p.textContent = ' (Already rerolled)';
+          span.appendChild(p);
         }
-
-        output += `</span>`;
-      });
-
-      output += `</div>`;
-      return output;
-    }
-
-    function rollDice() {
-      const numGray = parseInt(document.getElementById("gray").value) || 0;
-      const numYellow = parseInt(document.getElementById("yellow").value) || 0;
-      const numRed = parseInt(document.getElementById("red").value) || 0;
-
-      currentRolls.gray = [];
-      currentRolls.yellow = [];
-      currentRolls.red = [];
-
-      rerolled.gray = [];
-      rerolled.yellow = [];
-      rerolled.red = [];
-
-      for (let i = 0; i < numGray; i++) {
-        currentRolls.gray.push(roll(diceDefinitions.gray));
-        rerolled.gray.push(false);
-      }
-      for (let i = 0; i < numYellow; i++) {
-        currentRolls.yellow.push(roll(diceDefinitions.yellow));
-        rerolled.yellow.push(false);
-      }
-      for (let i = 0; i < numRed; i++) {
-        currentRolls.red.push(roll(diceDefinitions.red));
-        rerolled.red.push(false);
+      } else if(step === 4){
+        if(!rerolledFlags[i]){
+          const chk = document.createElement('input');
+          chk.type = 'checkbox';
+          chk.id = `inactive_reroll_chk_${die.id}`;
+          span.appendChild(chk);
+          const lbl = document.createElement('label');
+          lbl.htmlFor = chk.id;
+          lbl.textContent = ' Inactive reroll';
+          span.appendChild(lbl);
+        } else {
+          const p = document.createElement('span');
+          p.textContent = ' (Already rerolled)';
+          span.appendChild(p);
+        }
+      } else {
+        // step 1 or 5 (initial or final) – no checkboxes
+        let txt = '';
+        if(activePlayerRerolled[i]) txt += 'Active rerolled. ';
+        if(inactivePlayerRerolled[i]) txt += 'Inactive rerolled.';
+        if(txt !== ''){
+          const p = document.createElement('span');
+          p.textContent = `(${txt.trim()})`;
+          span.appendChild(p);
+        }
       }
 
-      updateResults();
-    }
+      container.appendChild(span);
+    });
 
-    function updateResults() {
-      const grayHTML = formatRollsWithReroll("gray");
-      const yellowHTML = formatRollsWithReroll("yellow");
-      const redHTML = formatRollsWithReroll("red");
+    const total = currentRolls.reduce((acc, die) => acc + die.value, 0);
+    const tot = document.createElement('div');
+    tot.style.marginTop = '1em';
+    tot.innerHTML = `<strong>Total:</strong> ${total}`;
+    container.appendChild(tot);
+  }
 
-      const allValues = [...currentRolls.gray, ...currentRolls.yellow, ...currentRolls.red];
-      const total = allValues.reduce((sum, val) => sum + val, 0);
+  // Initialize: only roll button enabled
+  resetAll();
 
-      const combinedHTML = grayHTML + yellowHTML + redHTML + `<br><strong>Total:</strong> ${total}`;
-
-      document.getElementById("results").innerHTML = combinedHTML;
-    }
-
-    function rerollDie(color, index) {
-      if (rerolled[color][index]) {
-        // Already rerolled, ignore
-        return;
-      }
-      const newVal = roll(diceDefinitions[color]);
-      currentRolls[color][index] = newVal;
-      rerolled[color][index] = true;  // Mark as rerolled
-
-      updateResults();
-    }
-  </script>
+</script>
 
 </body>
 </html>
