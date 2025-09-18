@@ -202,6 +202,7 @@
     step = 2;
     btnEssence.style.display = 'inline-block';
     btnActiveReroll.style.display = 'inline-block';
+    btnReset.style.display = 'inline-block';
 
     updateResults("Step 1: Initial Roll");
   }
@@ -213,7 +214,7 @@
       rerolledFlags[i] = true;
       activePlayerRerolled[i] = true;
     }
-    step = 2; // Fortfarande step 2 så Active player kan välja
+    step = 2; // fortfarande step 2 så active player kan välja
     btnEssence.style.display = 'none';
     updateResults("Step 2: Essence Reroll (all dice)");
   }
@@ -261,6 +262,13 @@
   function showFinal() {
     if(step !== 4) return;
     updateResults("Final Result");
+
+    // Räkna ut summan
+    const total = currentRolls.reduce((sum, die) => sum + die.value, 0);
+    const sumEl = document.createElement('h3');
+    sumEl.textContent = "Total Sum: " + total;
+    document.getElementById('results').appendChild(sumEl);
+
     btnShowFinal.style.display = 'none';
     btnReset.style.display = 'inline-block';
   }
@@ -337,10 +345,11 @@
 
     indicator.className = 'color-indicator ' + color;
 
+    // Alltid svart text
     switch(color){
       case 'grey':
         select.style.backgroundColor = '#888';
-        select.style.color = '#fff';
+        select.style.color = '#000';
         break;
       case 'yellow':
         select.style.backgroundColor = '#f1c40f';
@@ -348,7 +357,7 @@
         break;
       case 'red':
         select.style.backgroundColor = '#e74c3c';
-        select.style.color = '#fff';
+        select.style.color = '#000';
         break;
       case 'none':
       default:
