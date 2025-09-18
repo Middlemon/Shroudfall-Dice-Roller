@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Shroudfall Dice Roller with One-Time Reroll</title>
+  <style>
+    :root {
+      --gray: #555;
+      --yellow: goldenrod;
+      --red: crimson;
+    }
+
+    body {
+      font-family: Arial, sans-serif;
+      background: #f4f4f4;
+      margin: 0;
+      padding: 1em;
+      text-align: center;
+    }
+
+    h1 {
+      font-size: 1.8em;
+      margin-bottom: 1em;
+    }
+
+    .dice-row {
+      margin: 1em 0;
+      font-size: 1.1em;
+    }
+
+    input[type="number"] {
+      width: 60px;
+      font-size: 1em;
+      padding: 0.2em;
+      margin-left: 0.5em;
+      text-align: center;
+    }
+
+    button {
+      font-size: 1.2em;
+      padding: 0.5em 1.5em;
+      margin-top: 1em;
+      background-color: #0077cc;
+      color: white;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+    }
+
+    button:hover {
+      background-color: #005fa3;
+    }
+
+    .results {
+      margin-top: 2em;
+      font-size: 1.1em;
+      text-align: left;
+      display: inline-block;
+      background: #fff;
+      padding: 1em;
+      border-radius: 8px;
+      box-shadow: 0 0 5px rgba(0, 0, 0, 0.1);
+      max-width: 100%;
+      width: 100%;
+      box-sizing: border-box;
+    }
+
+    .gray {
+      color: var(--gray);
+    }
+
+    .yellow {
+      color: var(--yellow);
+    }
+
+    .red {
+      color: var(--red);
+    }
+
+    .dice-container {
+      display: inline-flex;
+      align-items: center;
+      margin: 4px;
+      vertical-align: middle;
+    }
+
+    img.dice-img {
+      width: 48px;
+      height: 48px;
+      margin-right: 6px;
+      vertical-align: middle;
+    }
+
+    button.reroll-btn {
+      font-size: 0.9em;
+      padding: 4px 8px;
+      background-color: #28a745;
+      border: none;
+      border-radius: 4px;
+      color: white;
+      cursor: pointer;
+    }
+
+    button.reroll-btn:hover {
+      background-color: #1e7e34;
+    }
+
+    @media (min-width: 500px) {
+      .results {
+        width: 400px;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <h1>🎲 Shroudfall Dice Roller</h1>
+
+  <div class="dice-row">
+    Gray dice:
+    <input type="number" id="gray" min="0" max="5" value="1" />
+  </div>
+
+  <div class="dice-row">
+    Yellow dice:
+    <input type="number" id="yellow" min="0" max="5" value="1" />
+  </div>
+
+  <div class="dice-row">
+    Red dice:
+    <input type="number" id="red" min="0" max="5" value="1" />
+  </div>
+
+  <button onclick="rollDice()">Roll Dice</button>
+
+  <div class="results" id="results"></div>
+
+  <script>
+    const diceDefinitions = {
+      gray: [0, 0, 1, 1, 2, 2],
+      yellow: [0, 1, 2, 2, 3, 3],
+      red: [2, 2, 3, 3, 4, 4],
+    };
+
+    // Current rolls and reroll state
+    let currentRolls = {
+      gray: [],
+      yellow: [],
+      red: [],
+    };
+
+    // Track which dice have already been rerolled (true/false arrays)
+    let rerolled = {
+      gray: [],
+      yellow: [],
+      red: [],
+    };
+
+    function roll(dieArray) {
+      return dieArray[Math.floor(Math.random() * dieArray.length)];
+    }
+
+    function capitalize(str) {
+      return str.charAt(0).toUpperCase() + str.slice(1);
+    }
+
+    function formatRollsWithReroll(color) {
+      const rolls = currentRolls[color];
+      const rerolledFlags = rerolled[color];
+
+      if (rolls.length === 0) {
+        return `<div class="${color}"><strong>${capitalize(color)}:</strong> No dice rolled.</div>`;
+      }
+
+      let output = `<div class="${color}"><strong>${capitalize(color)}:</strong><br>`;
+
+      rolls.forEach((val, index) => {
+        const imageName = `${color}_${val}.png`;
+        output += `<span class="dice-container" id="${color}-die-${index}">` +
+          `<img src="images/${imageName}" alt="${val}" title="Die ${index + 1}: ${val}" class="dice-img" />`;
+
+        // Visa reroll-knappen bara om tärningen inte redan är rerollad
+        if (!rerolledFlags[index]) {
+          output += `<button class="reroll-btn" onclick="rerollDie('${color}', ${index})" title="Reroll die ${index + 1}">Reroll</button>`;
+        }
+
+        output += `</span>`;
+      });
+
+      output += `</div>`;
+      return output;
+    }
+
+    function rollDice() {
+      const numGray = parseInt(document.getElementById("gray").value) || 0;
+      const numYellow = parseInt(document.getElementById("yellow").value) || 0;
+      const numRed = parseInt(document.getElementById("red").value) || 0;
+
+      currentRolls.gray = [];
+      currentRolls.yellow = [];
+      currentRolls.red = [];
+
+      rerolled.gray = [];
+      rerolled.yellow = [];
+      rerolled.red = [];
+
+      for (let i = 0; i < numGray; i++) {
+        currentRolls.gray.push(roll(diceDefinitions.gray));
+        rerolled.gray.push(false);
+      }
+      for (let i = 0; i < numYellow; i++) {
+        currentRolls.yellow.push(roll(diceDefinitions.yellow));
+        rerolled.yellow.push(false);
+      }
+      for (let i = 0; i < numRed; i++) {
+        currentRolls.red.push(roll(diceDefinitions.red));
+        rerolled.red.push(false);
+      }
+
+      updateResults();
+    }
+
+    function updateResults() {
+      const grayHTML = formatRollsWithReroll("gray");
+      const yellowHTML = formatRollsWithReroll("yellow");
+      const redHTML = formatRollsWithReroll("red");
+
+      const allValues = [...currentRolls.gray, ...currentRolls.yellow, ...currentRolls.red];
+      const total = allValues.reduce((sum, val) => sum + val, 0);
+
+      const combinedHTML = grayHTML + yellowHTML + redHTML + `<br><strong>Total:</strong> ${total}`;
+
+      document.getElementById("results").innerHTML = combinedHTML;
+    }
+
+    function rerollDie(color, index) {
+      if (rerolled[color][index]) {
+        // Already rerolled, ignore
+        return;
+      }
+      const newVal = roll(diceDefinitions[color]);
+      currentRolls[color][index] = newVal;
+      rerolled[color][index] = true;  // Mark as rerolled
+
+      updateResults();
+    }
+  </script>
+
+</body>
+</html>
