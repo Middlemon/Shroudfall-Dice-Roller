@@ -1,0 +1,314 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Shroudfall Dice Roller – Choose Dice Colors</title>
+<style>
+  body {
+    font-family: Arial, sans-serif;
+    background: #f4f4f4;
+    margin: 0; padding: 1em;
+    text-align: center;
+  }
+  .dice-row, .controls, .buttons {
+    margin: 1em 0;
+    font-size: 1.1em;
+  }
+  select, button {
+    font-size: 1em;
+    padding: 0.4em 1em;
+    margin: 0.2em;
+  }
+  .results {
+    margin-top: 2em;
+    font-size: 1.1em;
+    text-align: left;
+    display: inline-block;
+    background: #fff;
+    padding: 1em;
+    border-radius: 8px;
+    box-shadow: 0 0 5px rgba(0,0,0,0.1);
+    max-width: 100%;
+    width: 100%;
+    box-sizing: border-box;
+  }
+  .dice-container {
+    display: inline-flex;
+    align-items: center;
+    margin: 4px;
+    vertical-align: middle;
+  }
+  img.dice-img {
+    width: 48px;
+    height: 48px;
+    margin-right: 6px;
+    vertical-align: middle;
+  }
+  label {
+    user-select: none;
+  }
+  .step-header {
+    font-weight: bold;
+    margin-bottom: 0.5em;
+  }
+</style>
+</head>
+<body>
+
+<h1>Shroudfall Dice Roller – Choose Dice Colors</h1>
+
+<div class="controls" id="diceColorSelectors">
+  <div>
+    <label for="die0">Die 1: </label>
+    <select id="die0">
+      <option value="grey">Grey</option>
+      <option value="yellow">Yellow</option>
+      <option value="red">Red</option>
+    </select>
+  </div>
+  <div>
+    <label for="die1">Die 2: </label>
+    <select id="die1">
+      <option value="grey">Grey</option>
+      <option value="yellow">Yellow</option>
+      <option value="red">Red</option>
+    </select>
+  </div>
+  <div>
+    <label for="die2">Die 3: </label>
+    <select id="die2">
+      <option value="grey">Grey</option>
+      <option value="yellow">Yellow</option>
+      <option value="red">Red</option>
+    </select>
+  </div>
+  <div>
+    <label for="die3">Die 4: </label>
+    <select id="die3">
+      <option value="grey">Grey</option>
+      <option value="yellow">Yellow</option>
+      <option value="red">Red</option>
+    </select>
+  </div>
+  <div>
+    <label for="die4">Die 5: </label>
+    <select id="die4">
+      <option value="none">None</option>
+      <option value="grey">Grey</option>
+      <option value="yellow">Yellow</option>
+      <option value="red">Red</option>
+    </select>
+  </div>
+</div>
+
+<div class="buttons">
+  <button id="btnRoll" onclick="initialRoll()">Roll All Dice</button>
+  <button id="btnEssenceReroll" onclick="essenceReroll()" style="display:none;">Essence Reroll (all dice)</button>
+  <button id="btnActiveReroll" onclick="activePlayerReroll()" style="display:none;">Active Player: Reroll Selected</button>
+  <button id="btnInactiveReroll" onclick="inactivePlayerReroll()" style="display:none;">Inactive Player: Reroll Selected</button>
+  <button id="btnShowFinal" onclick="showFinal()" style="display:none;">Show Final Result</button>
+  <button id="btnReset" onclick="resetAll()" style="display:none;">Reset</button>
+</div>
+
+<div class="results" id="results"></div>
+
+<script>
+  const greyDie = [null, null, 1, 1, 2, 2]; // null = blank sides, rerolled in rollDie()
+  const yellowDie = [0, 1, 2, 2, 3, 3];
+  const redDie    = [2, 2, 3, 3, 4, 4];
+
+  let currentRolls = [];      // {color, value, id}
+  let rerolledFlags = [];
+  let nextDieId = 0;
+
+  let activePlayerRerolled = [];
+  let inactivePlayerRerolled = [];
+
+  let step = 1;
+
+  // Buttons
+  const btnRoll = document.getElementById('btnRoll');
+  const btnEssence = document.getElementById('btnEssenceReroll');
+  const btnActiveReroll = document.getElementById('btnActiveReroll');
+  const btnInactiveReroll = document.getElementById('btnInactiveReroll');
+  const btnShowFinal = document.getElementById('btnShowFinal');
+  const btnReset = document.getElementById('btnReset');
+
+  function rollDie(color) {
+    let dieArray;
+    if(color === 'grey') dieArray = greyDie;
+    else if(color === 'yellow') dieArray = yellowDie;
+    else if(color === 'red') dieArray = redDie;
+    else return null;
+
+    let side;
+    do {
+      side = dieArray[Math.floor(Math.random() * dieArray.length)];
+    } while (side === null);
+
+    return side;
+  }
+
+  function initialRoll() {
+    currentRolls = [];
+    rerolledFlags = [];
+    activePlayerRerolled = [];
+    inactivePlayerRerolled = [];
+    nextDieId = 0;
+
+    for(let i=0; i<5; i++){
+      const sel = document.getElementById(`die${i}`);
+      const color = sel.value;
+      if(color === 'none') continue;
+      const val = rollDie(color);
+      currentRolls.push({color, value: val, id: nextDieId++});
+      rerolledFlags.push(false);
+    }
+
+    document.getElementById('diceColorSelectors').style.display = 'none';
+    btnRoll.style.display = 'none';
+
+    step = 2;
+    btnEssence.style.display = 'inline-block';
+    btnActiveReroll.style.display = 'inline-block';
+
+    updateResults("Step 1: Initial Roll");
+  }
+
+  function essenceReroll() {
+    if(step !== 2) return;
+    for(let i=0; i<currentRolls.length; i++){
+      currentRolls[i].value = rollDie(currentRolls[i].color);
+      rerolledFlags[i] = true;
+      activePlayerRerolled[i] = true;
+    }
+    step = 3;
+    btnEssence.style.display = 'none';
+    updateResults("Step 2: Essence Reroll (all dice)");
+  }
+
+  function activePlayerReroll(){
+    if(step !== 2 && step !== 3) return;
+
+    let anyRerolled = false;
+    currentRolls.forEach((die, i) => {
+      const checkbox = document.getElementById('active_reroll_chk_' + die.id);
+      if(checkbox && checkbox.checked && !rerolledFlags[i]){
+        currentRolls[i].value = rollDie(currentRolls[i].color);
+        rerolledFlags[i] = true;
+        activePlayerRerolled[i] = true;
+        anyRerolled = true;
+      }
+    });
+    if(anyRerolled){
+      step = 3;
+      btnEssence.style.display = 'none';
+      updateResults("Step 3: Active Player Reroll");
+      btnActiveReroll.style.display = 'none';
+      btnInactiveReroll.style.display = 'inline-block';
+    } else {
+      alert("Select at least one die to reroll or skip.");
+    }
+  }
+
+  function inactivePlayerReroll(){
+    if(step !== 3) return;
+    let anyRerolled = false;
+    currentRolls.forEach((die, i) => {
+      const checkbox = document.getElementById('inactive_reroll_chk_' + die.id);
+      if(checkbox && checkbox.checked && !rerolledFlags[i]){
+        currentRolls[i].value = rollDie(currentRolls[i].color);
+        rerolledFlags[i] = true;
+        inactivePlayerRerolled[i] = true;
+        anyRerolled = true;
+      }
+    });
+    step = 4;
+    btnInactiveReroll.style.display = 'none';
+    btnShowFinal.style.display = 'inline-block';
+    if(anyRerolled){
+      updateResults("Step 4: Inactive Player Reroll");
+    } else {
+      updateResults("Step 4: Inactive Player chose no rerolls");
+    }
+  }
+
+  function showFinal(){
+    if(step !== 4) return;
+    step = 5;
+    btnShowFinal.style.display = 'none';
+    btnReset.style.display = 'inline-block';
+    updateResults("Step 5: Final Result");
+  }
+
+  function resetAll(){
+    step = 1;
+    currentRolls = [];
+    rerolledFlags = [];
+    activePlayerRerolled = [];
+    inactivePlayerRerolled = [];
+    nextDieId = 0;
+
+    document.getElementById('diceColorSelectors').style.display = 'block';
+
+    btnRoll.style.display = 'inline-block';
+    btnEssence.style.display = 'none';
+    btnActiveReroll.style.display = 'none';
+    btnInactiveReroll.style.display = 'none';
+    btnShowFinal.style.display = 'none';
+    btnReset.style.display = 'none';
+
+    document.getElementById('results').innerHTML = '';
+  }
+
+  function updateResults(headerText){
+    const container = document.getElementById('results');
+    container.innerHTML = '';
+    const h = document.createElement('div');
+    h.className = 'step-header';
+    h.textContent = headerText;
+    container.appendChild(h);
+
+    currentRolls.forEach((die, i) => {
+      const dieDiv = document.createElement('div');
+      dieDiv.className = 'dice-container';
+
+      // Dice image
+      const img = document.createElement('img');
+      img.className = 'dice-img';
+      img.src = `images/${die.color}_${die.value}.png`;
+      img.alt = `${die.color} die showing ${die.value}`;
+      dieDiv.appendChild(img);
+
+      // Text info
+      const textSpan = document.createElement('span');
+      textSpan.textContent = `${die.color.charAt(0).toUpperCase() + die.color.slice(1)} Die: ${die.value}`;
+      dieDiv.appendChild(textSpan);
+
+      // Add reroll checkbox depending on step and player
+      if(step === 2) {
+        // Active player selects dice to reroll
+        const chk = document.createElement('input');
+        chk.type = 'checkbox';
+        chk.id = `active_reroll_chk_${die.id}`;
+        chk.title = "Select this die to reroll (Active Player)";
+        dieDiv.appendChild(chk);
+      } else if(step === 3) {
+        // Inactive player selects dice to reroll (only dice NOT rerolled in active reroll)
+        if(!rerolledFlags[i]) {
+          const chk = document.createElement('input');
+          chk.type = 'checkbox';
+          chk.id = `inactive_reroll_chk_${die.id}`;
+          chk.title = "Select this die to reroll (Inactive Player)";
+          dieDiv.appendChild(chk);
+        }
+      }
+
+      container.appendChild(dieDiv);
+    });
+  }
+</script>
+
+</body>
+</html>
